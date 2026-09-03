@@ -12,7 +12,7 @@ from tmdb_service import discover_movies, parse_query
 # Page config
 # ---------------------------------------------------------------------------
 
-st.set_page_config(page_title="Movie Discovery Agent", page_icon="🎬")
+st.set_page_config(page_title="Movie Discovery AI Agent", page_icon="🎬")
 
 # ---------------------------------------------------------------------------
 # Dark cinematic background — Batman-inspired Gotham cityscape
@@ -105,7 +105,7 @@ st.markdown(
 # Page title and description
 # ---------------------------------------------------------------------------
 
-st.title("🎬 Movie Discovery Agent")
+st.title("🎬 Movie Discovery AI Agent")
 
 st.markdown(
     """
