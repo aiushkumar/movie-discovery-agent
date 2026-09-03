@@ -6,8 +6,10 @@ from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from feedback_memory import filter_movies, load_rejected_titles
 
-load_dotenv()
+
+load_dotenv(override=False)  # No-op on Hugging Face Spaces where env vars come from Secrets
 
 READ_ACCESS_TOKEN = os.getenv("TMDB_READ_ACCESS_TOKEN")
 BASE_URL = "https://api.themoviedb.org/3"
@@ -220,8 +222,13 @@ def discover_movies(parsed_query: dict) -> list:
         print(response.text)
         return []
 
-    results = response.json().get("results", [])
-    return results[:5]
+    results = response.json().get("results", [])[:5]
+
+    # Filter out any movies the user has previously rejected
+    rejected_titles = load_rejected_titles()
+    results = filter_movies(results, rejected_titles)
+
+    return results
 
 
 def recommend_movies(query: str) -> None:
