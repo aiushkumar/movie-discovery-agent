@@ -23,6 +23,17 @@ GENRE_MAP = {
     "thriller": 53,
     "romance": 10749,
     "science fiction": 878,
+    "animation": 16,
+    "documentary": 99,
+    "fantasy": 14,
+    "mystery": 9648,
+    "adventure": 12,
+    "family": 10751,
+    "crime": 80,
+    "history": 36,
+    "music": 10402,
+    "war": 10752,
+    "western": 37,
 }
 
 # Keywords that indicate the user wants highest-rated results
@@ -186,15 +197,19 @@ def test_parse_query():
         print()
 
 
-def discover_movies(parsed_query: dict) -> list:
+def discover_movies(parsed_query: dict, limit: int = 5) -> list:
     """
     Call TMDB discover/movie endpoint using a parsed query dict.
 
+    Accepts both legacy parse_query() output and richer Gemini intent dicts.
+    Gemini intent keys (genres, year, sort_by, language) take precedence when present.
+
     Args:
-        parsed_query: Output of parse_query() with keys genre, genre_id, year.
+        parsed_query: dict from parse_query() or gemini_service.parse_intent()
+        limit:        Maximum number of results to return (default 5)
 
     Returns:
-        List of up to 5 movie dicts from TMDB results.
+        List of up to `limit` movie dicts from TMDB, filtered against memory.
     """
     headers = {
         "Authorization": f"Bearer {READ_ACCESS_TOKEN}",
@@ -203,14 +218,41 @@ def discover_movies(parsed_query: dict) -> list:
 
     params = {
         "sort_by": parsed_query.get("sort_by", "popularity.desc"),
-        "vote_count.gte": 500,
+        "vote_count.gte": 100,
     }
 
-    if parsed_query.get("genre_id"):
-        params["with_genres"] = parsed_query["genre_id"]
+    # --- Genre resolution ---
+    # Gemini returns "genres" (list); legacy parse_query returns "genre_id" (int)
+    genre_id = parsed_query.get("genre_id")
 
-    if parsed_query.get("year"):
-        params["primary_release_date.gte"] = f"{parsed_query['year']}-01-01"
+    if not genre_id:
+        gemini_genres = parsed_query.get("genres") or []
+        for g in gemini_genres:
+            resolved = GENRE_MAP.get(g.lower().strip())
+            if resolved:
+                genre_id = resolved
+                break
+
+    if genre_id:
+        params["with_genres"] = genre_id
+
+    # --- Year resolution ---
+    year = parsed_query.get("year")
+    if year:
+        params["primary_release_date.gte"] = f"{int(year)}-01-01"
+
+    # --- Language resolution (Gemini only) ---
+    language = parsed_query.get("language")
+    if language:
+        # TMDB uses ISO 639-1 codes; map common names
+        lang_map = {
+            "korean": "ko", "english": "en", "french": "fr",
+            "spanish": "es", "japanese": "ja", "hindi": "hi",
+            "german": "de", "italian": "it", "portuguese": "pt",
+        }
+        lang_code = lang_map.get(language.lower())
+        if lang_code:
+            params["with_original_language"] = lang_code
 
     url = f"{BASE_URL}/discover/movie"
     session = create_session()
@@ -222,13 +264,13 @@ def discover_movies(parsed_query: dict) -> list:
         print(response.text)
         return []
 
-    results = response.json().get("results", [])[:5]
+    results = response.json().get("results", [])[:limit + 5]  # fetch extra buffer for filtering
 
     # Filter out any movies the user has previously rejected
     rejected_titles = load_rejected_titles()
     results = filter_movies(results, rejected_titles)
 
-    return results
+    return results[:limit]
 
 
 def recommend_movies(query: str) -> None:

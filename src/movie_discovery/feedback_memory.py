@@ -115,6 +115,23 @@ def process_feedback(user_input: str) -> str:
     return "\n".join(lines)
 
 
+def load_all_records() -> list:
+    """
+    Load the full memory.json contents for display and LLM summarisation.
+
+    Returns:
+        List of all memory dicts. Empty list if file is absent or corrupt.
+    """
+    if not MEMORY_FILE.exists():
+        return []
+
+    try:
+        with open(MEMORY_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
 def load_rejected_titles() -> set:
     """
     Load all rejected movie titles from memory.json.
