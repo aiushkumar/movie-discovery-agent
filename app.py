@@ -125,7 +125,7 @@ st.divider()
 st.header("Find Movies")
 
 query = st.text_input(
-    "What movies are you looking for?",
+    "Which movie genre you want to watch movie from?",
     placeholder="e.g. best horror movies after 2015",
 )
 
